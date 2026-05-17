@@ -26,11 +26,13 @@ func main() {
 	}
 
 	database, err := db.Init(&db.DBConfig{
-		Host: cfg.DBHost,
-		Port: cfg.DBPort,
-		Name: cfg.DBName,
-		User: cfg.DBUser,
-		Pass: cfg.DBPass,
+		Host:     cfg.DBHost,
+		Port:     cfg.DBPort,
+		Name:     cfg.DBName,
+		User:     cfg.DBUser,
+		Pass:     cfg.DBPass,
+		LogQuery: cfg.SQLLogQuery,
+		LogTime:  cfg.SQLLogTime,
 	})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
@@ -40,7 +42,7 @@ func main() {
 		Addr: cfg.RedisAddr,
 	})
 
-	hotelsSvc := services.NewHotelsService(database, redisClient, cfg.CacheTTL)
+	hotelsSvc := services.NewHotelsService(database)
 	hotelsHandler := handlers.NewHotelsHandler(hotelsSvc)
 
 	usersSvc := services.NewUsersService(database, redisClient)

@@ -8,14 +8,16 @@ import (
 )
 
 type Config struct {
-	DBHost     string
-	DBPort     int
-	DBName     string
-	DBUser     string
-	DBPass     string
-	RedisAddr  string
-	CacheTTL   time.Duration
-	SessionTTL time.Duration
+	DBHost       string
+	DBPort       int
+	DBName       string
+	DBUser       string
+	DBPass       string
+	RedisAddr    string
+	CacheTTL     time.Duration
+	SessionTTL   time.Duration
+	SQLLogQuery  bool
+	SQLLogTime   bool
 }
 
 func Load() (*Config, error) {
@@ -35,15 +37,21 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     dbPort,
-		DBName:     mustEnv("DB_NAME"),
-		DBUser:     mustEnv("DB_USER"),
-		DBPass:     mustEnv("DB_PASS"),
-		RedisAddr:  getEnv("REDIS_ADDR", "localhost:6379"),
-		CacheTTL:   cacheTTL,
-		SessionTTL: sessionTTL,
+		DBHost:      getEnv("DB_HOST", "localhost"),
+		DBPort:      dbPort,
+		DBName:      mustEnv("DB_NAME"),
+		DBUser:      mustEnv("DB_USER"),
+		DBPass:      mustEnv("DB_PASS"),
+		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
+		CacheTTL:    cacheTTL,
+		SessionTTL:  sessionTTL,
+		SQLLogQuery: parseBool(getEnv("SQL_LOG_QUERY", "false")),
+		SQLLogTime:  parseBool(getEnv("SQL_LOG_TIME", "false")),
 	}, nil
+}
+
+func parseBool(s string) bool {
+	return s == "true" || s == "1" || s == "yes"
 }
 
 func getEnv(key, fallback string) string {

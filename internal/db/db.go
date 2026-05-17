@@ -5,10 +5,69 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
+	"github.com/qustavo/sqlhooks/v2"
+)
+
+// To not have key collisions
+// empty struct is zero bytes
+type ctxKeyStart struct{}
+type ctxKeyQuery struct{}
+type ctxKeyArgs struct{}
+
+var globalHooks = &logHooks{}
+
+func init() {
+	sql.Register("pq-logged", sqlhooks.Wrap(&pq.Driver{}, globalHooks))
+}
+
+type logHooks struct {
+	logQuery bool
+	logTime  bool
+}
+
+func (h *logHooks) Before(ctx context.Context, query string, args ...any) (context.Context, error) {
+	if h.logQuery {
+		ctx = context.WithValue(ctx, ctxKeyQuery{}, query)
+		ctx = context.WithValue(ctx, ctxKeyArgs{}, args)
+	}
+	if h.logTime {
+		ctx = context.WithValue(ctx, ctxKeyStart{}, time.Now())
+	}
+	return ctx, nil
+}
+
+func (h *logHooks) After(ctx context.Context, query string, args ...any) (context.Context, error) {
+	var parts []string
+	if h.logTime {
+		if start, ok := ctx.Value(ctxKeyStart{}).(time.Time); ok {
+			parts = append(parts, time.Since(start).String())
+		}
+	}
+	if h.logQuery {
+		if q, ok := ctx.Value(ctxKeyQuery{}).(string); ok {
+			parts = append(parts, q)
+		}
+		if a, ok := ctx.Value(ctxKeyArgs{}).([]any); ok {
+			parts = append(parts, fmt.Sprintf("args: %v", a))
+		}
+	}
+	if len(parts) > 0 {
+		log.Printf("[SQL] %s", strings.Join(parts, " | "))
+	}
+	return ctx, nil
+}
+
+// PostgreSQL error codes
+const (
+	PgErrorUniqueViolation     = "23505"
+	PgErrorForeignKeyViolation = "23503"
+	PgErrorNotNullViolation    = "23502"
+	PgErrorCheckViolation      = "23514"
 )
 
 type DB struct {
@@ -16,11 +75,13 @@ type DB struct {
 }
 
 type DBConfig struct {
-	Host string
-	Port int
-	Name string
-	User string
-	Pass string
+	Host     string
+	Port     int
+	Name     string
+	User     string
+	Pass     string
+	LogQuery bool
+	LogTime  bool
 }
 
 var (
@@ -32,10 +93,13 @@ var (
 func Init(config *DBConfig) (*DB, error) {
 	dbOnce.Do(func() {
 		log.Println("Start init DB")
+		globalHooks.logQuery = config.LogQuery
+		globalHooks.logTime = config.LogTime
+
 		connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
 			config.User, config.Pass, config.Host, config.Port, config.Name)
 
-		rawDB, err := sql.Open("postgres", connStr)
+		rawDB, err := sql.Open("pq-logged", connStr)
 		if err != nil {
 			initError = fmt.Errorf("error opening DB: %w", err)
 			return

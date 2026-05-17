@@ -42,7 +42,7 @@ func (s *UsersService) Register(ctx context.Context, email, password, name strin
 	user, err := s.db.CreateUser(ctx, email, string(hash), name)
 	if err != nil {
 		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+		if errors.As(err, &pqErr) && pqErr.Code == db.PgErrorUniqueViolation {
 			return models.User{}, ErrEmailTaken
 		}
 		return models.User{}, err

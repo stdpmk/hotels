@@ -1,26 +1,19 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/stdpmk/hotels/internal/http/response"
-	"github.com/stdpmk/hotels/internal/models"
 	"github.com/stdpmk/hotels/internal/services"
 )
 
-type authService interface {
-	Register(ctx context.Context, email, password, name string) (models.User, error)
-	Login(ctx context.Context, email, password string) (string, error)
-}
-
 type AuthHandler struct {
-	svc authService
+	svc *services.UsersService
 }
 
-func NewAuthHandler(svc authService) *AuthHandler {
+func NewAuthHandler(svc *services.UsersService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 

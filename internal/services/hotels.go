@@ -3,51 +3,47 @@ package services
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"log"
-	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stdpmk/hotels/internal/db"
 	"github.com/stdpmk/hotels/internal/models"
 )
 
-const hotelsKey = "hotels:all"
-
 var ErrHotelNotFound = errors.New("hotel not found")
 
 type HotelsService struct {
-	db    *db.DB
-	redis *redis.Client
-	ttl   time.Duration
+	db *db.DB
 }
 
-func NewHotelsService(db *db.DB, redis *redis.Client, ttl time.Duration) *HotelsService {
-	return &HotelsService{db: db, redis: redis, ttl: ttl}
+func NewHotelsService(db *db.DB) *HotelsService {
+	return &HotelsService{db: db}
 }
 
-func (h *HotelsService) GetHotels(ctx context.Context) ([]models.Hotel, error) {
-	data, err := h.redis.Get(ctx, hotelsKey).Bytes()
-	if err == nil {
-		var hotels []models.Hotel
-		if err := json.Unmarshal(data, &hotels); err == nil {
-			return hotels, nil
-		}
-	}
-
-	hotels, err := h.db.GetHotels(ctx)
+func (h *HotelsService) GetHotels(ctx context.Context, f models.HotelsFilter) (models.HotelsPage, error) {
+	hotels, total, err := h.db.GetHotels(ctx, f)
 	if err != nil {
-		return nil, err
+		return models.HotelsPage{}, err
 	}
 
-	if data, err := json.Marshal(hotels); err == nil {
-		if err := h.redis.Set(ctx, hotelsKey, data, h.ttl).Err(); err != nil {
-			log.Printf("cache set error: %v", err)
-		}
+	if hotels == nil {
+		hotels = []models.Hotel{}
 	}
 
-	return hotels, nil
+	limit := f.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	page := f.Page
+	if page <= 0 {
+		page = 1
+	}
+
+	return models.HotelsPage{
+		Hotels: hotels,
+		Total:  total,
+		Page:   page,
+		Limit:  limit,
+	}, nil
 }
 
 func (h *HotelsService) GetHotelByID(ctx context.Context, id string) (models.Hotel, error) {
@@ -59,9 +55,4 @@ func (h *HotelsService) GetHotelByID(ctx context.Context, id string) (models.Hot
 		return models.Hotel{}, err
 	}
 	return hotel, nil
-}
-
-func (h *HotelsService) FindHotelsByFilter(ctx context.Context, filter map[string]any) ([]models.Hotel, error) {
-	// TODO: implement me
-	return nil, errors.New("Implement me")
 }
