@@ -16,14 +16,20 @@ type Config struct {
 	RedisAddr    string
 	CacheTTL     time.Duration
 	SessionTTL   time.Duration
-	SQLLogQuery  bool
-	SQLLogTime   bool
+	SQLLogQuery      bool
+	SQLLogTime       bool
+	SQLSlowThreshold time.Duration
 }
 
 func Load() (*Config, error) {
 	dbPort, err := strconv.Atoi(getEnv("DB_PORT", "5432"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
+	}
+
+	slowMS, err := strconv.Atoi(getEnv("SQL_SLOW_THRESHOLD_MS", "0"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid SQL_SLOW_THRESHOLD_MS: %w", err)
 	}
 
 	cacheTTL, err := time.ParseDuration(getEnv("CACHE_TTL", "5m"))
@@ -45,8 +51,9 @@ func Load() (*Config, error) {
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		CacheTTL:    cacheTTL,
 		SessionTTL:  sessionTTL,
-		SQLLogQuery: parseBool(getEnv("SQL_LOG_QUERY", "false")),
-		SQLLogTime:  parseBool(getEnv("SQL_LOG_TIME", "false")),
+		SQLLogQuery:      parseBool(getEnv("SQL_LOG_QUERY", "false")),
+		SQLLogTime:       parseBool(getEnv("SQL_LOG_TIME", "false")),
+		SQLSlowThreshold: time.Duration(slowMS) * time.Millisecond,
 	}, nil
 }
 

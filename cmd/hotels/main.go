@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -12,6 +13,7 @@ import (
 	"github.com/stdpmk/hotels/internal/db"
 	"github.com/stdpmk/hotels/internal/http/handlers"
 	"github.com/stdpmk/hotels/internal/http/middleware"
+	"github.com/stdpmk/hotels/internal/httpstat"
 	"github.com/stdpmk/hotels/internal/services"
 )
 
@@ -31,8 +33,9 @@ func main() {
 		Name:     cfg.DBName,
 		User:     cfg.DBUser,
 		Pass:     cfg.DBPass,
-		LogQuery: cfg.SQLLogQuery,
-		LogTime:  cfg.SQLLogTime,
+		LogQuery:      cfg.SQLLogQuery,
+		LogTime:       cfg.SQLLogTime,
+		SlowThreshold: cfg.SQLSlowThreshold,
 	})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
@@ -51,8 +54,14 @@ func main() {
 	bookingsSvc := services.NewBookingsService(database)
 	bookingsHandler := handlers.NewBookingsHandler(bookingsSvc)
 
+	stats := httpstat.NewStatistics(time.Minute)
+	stats.StartWindowReset()
+
 	r := mux.NewRouter()
+	r.HandleFunc("/debug/stats", httpstat.Handler(stats)).Methods(http.MethodGet)
+
 	api := r.PathPrefix("/api/v1").Subrouter()
+	api.Use(httpstat.Middleware(stats))
 
 	api.HandleFunc("/auth/register", authHandler.Register).Methods(http.MethodPost)
 	api.HandleFunc("/auth/login", authHandler.Login).Methods(http.MethodPost)

@@ -25,9 +25,15 @@ func init() {
 	sql.Register("pq-logged", sqlhooks.Wrap(&pq.Driver{}, globalHooks))
 }
 
+const (
+	ansiRed   = "\033[31m"
+	ansiReset = "\033[0m"
+)
+
 type logHooks struct {
-	logQuery bool
-	logTime  bool
+	logQuery      bool
+	logTime       bool
+	slowThreshold time.Duration
 }
 
 func (h *logHooks) Before(ctx context.Context, query string, args ...any) (context.Context, error) {
@@ -35,7 +41,7 @@ func (h *logHooks) Before(ctx context.Context, query string, args ...any) (conte
 		ctx = context.WithValue(ctx, ctxKeyQuery{}, query)
 		ctx = context.WithValue(ctx, ctxKeyArgs{}, args)
 	}
-	if h.logTime {
+	if h.logTime || h.slowThreshold > 0 {
 		ctx = context.WithValue(ctx, ctxKeyStart{}, time.Now())
 	}
 	return ctx, nil
@@ -43,9 +49,11 @@ func (h *logHooks) Before(ctx context.Context, query string, args ...any) (conte
 
 func (h *logHooks) After(ctx context.Context, query string, args ...any) (context.Context, error) {
 	var parts []string
-	if h.logTime {
-		if start, ok := ctx.Value(ctxKeyStart{}).(time.Time); ok {
-			parts = append(parts, time.Since(start).String())
+	var elapsed time.Duration
+	if start, ok := ctx.Value(ctxKeyStart{}).(time.Time); ok {
+		elapsed = time.Since(start)
+		if h.logTime {
+			parts = append(parts, elapsed.String())
 		}
 	}
 	if h.logQuery {
@@ -56,9 +64,14 @@ func (h *logHooks) After(ctx context.Context, query string, args ...any) (contex
 			parts = append(parts, fmt.Sprintf("args: %v", a))
 		}
 	}
-	if len(parts) > 0 {
-		log.Printf("[SQL] %s", strings.Join(parts, " | "))
+	if len(parts) == 0 {
+		return ctx, nil
 	}
+	msg := "[SQL] " + strings.Join(parts, " | ")
+	if h.slowThreshold > 0 && elapsed >= h.slowThreshold {
+		msg = ansiRed + msg + ansiReset
+	}
+	log.Print(msg)
 	return ctx, nil
 }
 
@@ -75,13 +88,14 @@ type DB struct {
 }
 
 type DBConfig struct {
-	Host     string
-	Port     int
-	Name     string
-	User     string
-	Pass     string
-	LogQuery bool
-	LogTime  bool
+	Host          string
+	Port          int
+	Name          string
+	User          string
+	Pass          string
+	LogQuery      bool
+	LogTime       bool
+	SlowThreshold time.Duration
 }
 
 var (
@@ -95,6 +109,7 @@ func Init(config *DBConfig) (*DB, error) {
 		log.Println("Start init DB")
 		globalHooks.logQuery = config.LogQuery
 		globalHooks.logTime = config.LogTime
+		globalHooks.slowThreshold = config.SlowThreshold
 
 		connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
 			config.User, config.Pass, config.Host, config.Port, config.Name)
