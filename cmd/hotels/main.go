@@ -59,10 +59,12 @@ func main() {
 
 	api.HandleFunc("/hotels", hotelsHandler.GetHotelsHandler).Methods(http.MethodGet)
 	api.HandleFunc("/hotels/{id}", hotelsHandler.GetHotelByIDHandler).Methods(http.MethodGet)
+	api.HandleFunc("/hotels/{id}/rooms", hotelsHandler.GetHotelRoomsHandler).Methods(http.MethodGet)
 
 	protected := api.NewRoute().Subrouter()
 	protected.Use(middleware.Auth(redisClient))
 	protected.HandleFunc("/user/bookings", bookingsHandler.GetMyBookings).Methods(http.MethodGet)
+	protected.HandleFunc("/bookings", bookingsHandler.CreateBooking).Methods(http.MethodPost)
 
 	log.Println("Server started on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {

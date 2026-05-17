@@ -46,6 +46,17 @@ func (h *HotelsService) GetHotels(ctx context.Context, f models.HotelsFilter) (m
 	}, nil
 }
 
+func (h *HotelsService) GetRoomsByHotelID(ctx context.Context, hotelID int64) ([]models.Room, error) {
+	rooms, err := h.db.GetRoomsByHotelID(ctx, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	if rooms == nil {
+		rooms = []models.Room{}
+	}
+	return rooms, nil
+}
+
 func (h *HotelsService) GetHotelByID(ctx context.Context, id string) (models.Hotel, error) {
 	hotel, err := h.db.GetHotelByID(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {

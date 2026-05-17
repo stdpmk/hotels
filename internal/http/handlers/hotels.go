@@ -69,6 +69,23 @@ func (h *HotelsHandler) GetHotelByIDHandler(w http.ResponseWriter, req *http.Req
 	response.WriteJSON(w, http.StatusOK, hotel)
 }
 
+func (h *HotelsHandler) GetHotelRoomsHandler(w http.ResponseWriter, req *http.Request) {
+	rawID := mux.Vars(req)["id"]
+	hotelID, err := strconv.ParseInt(rawID, 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid hotel id", response.CodeBadRequest)
+		return
+	}
+
+	rooms, err := h.service.GetRoomsByHotelID(req.Context(), hotelID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "internal server error", response.CodeInternal)
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, rooms)
+}
+
 func parseInt(s string, fallback int) int {
 	if v, err := strconv.Atoi(s); err == nil && v > 0 {
 		return v

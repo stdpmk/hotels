@@ -12,6 +12,7 @@ const (
 	CodeInternal           = "INTERNAL_ERROR"
 	CodeBadRequest         = "BAD_REQUEST"
 	CodeUnauthorized       = "UNAUTHORIZED"
+	CodeConflict           = "CONFLICT"
 )
 
 type ErrorResponse struct {
