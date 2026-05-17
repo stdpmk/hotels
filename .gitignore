@@ -1,0 +1,5 @@
+.env
+cmd/hotels/hotels
+cmd/hotels/.env
+.claude/
+cmd/hotels/.env
