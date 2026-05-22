@@ -29,6 +29,10 @@ func (s *BookingsService) GetMyBookings(ctx context.Context, userID int64) ([]mo
 }
 
 func (s *BookingsService) CreateBooking(ctx context.Context, userID, roomID int64, checkIn, checkOut time.Time) (models.Booking, error) {
+	if !checkOut.After(checkIn) {
+		return models.Booking{}, ErrInvalidDates
+	}
+
 	room, err := s.db.GetRoomByID(ctx, roomID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Booking{}, ErrRoomNotFound
@@ -37,20 +41,20 @@ func (s *BookingsService) CreateBooking(ctx context.Context, userID, roomID int6
 		return models.Booking{}, err
 	}
 
-	if !checkOut.After(checkIn) {
-		return models.Booking{}, ErrInvalidDates
-	}
-
-	available, err := s.db.IsRoomAvailable(ctx, roomID, checkIn, checkOut)
-	if err != nil {
-		return models.Booking{}, err
-	}
-	if !available {
-		return models.Booking{}, ErrRoomNotAvailable
-	}
-
 	nights := int(checkOut.Sub(checkIn).Hours() / 24)
 	totalPrice := room.PricePerNight * float64(nights)
 
-	return s.db.CreateBooking(ctx, userID, roomID, checkIn, checkOut, totalPrice)
+	var booking models.Booking
+	err = s.db.WithTx(ctx, func(tx *db.DB) error {
+		available, err := tx.IsRoomAvailable(ctx, roomID, checkIn, checkOut)
+		if err != nil {
+			return err
+		}
+		if !available {
+			return ErrRoomNotAvailable
+		}
+		booking, err = tx.CreateBooking(ctx, userID, roomID, checkIn, checkOut, totalPrice)
+		return err
+	})
+	return booking, err
 }

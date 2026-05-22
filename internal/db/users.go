@@ -8,7 +8,7 @@ import (
 
 func (db *DB) CreateUser(ctx context.Context, email, passwordHash, name string) (models.User, error) {
 	var user models.User
-	err := db.DB.QueryRowContext(ctx,
+	err := db.db.QueryRowContext(ctx,
 		`INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3)
 		 RETURNING id, email, password_hash, name, created_at`,
 		email, passwordHash, name,
@@ -21,7 +21,7 @@ func (db *DB) CreateUser(ctx context.Context, email, passwordHash, name string) 
 
 func (db *DB) GetUserByEmail(ctx context.Context, email string) (models.User, error) {
 	var user models.User
-	err := db.DB.QueryRowContext(ctx,
+	err := db.db.QueryRowContext(ctx,
 		`SELECT id, email, password_hash, name, created_at FROM users WHERE email = $1`,
 		email,
 	).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.CreatedAt)

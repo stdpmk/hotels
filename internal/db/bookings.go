@@ -8,7 +8,7 @@ import (
 )
 
 func (db *DB) GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error) {
-	rows, err := db.DB.QueryContext(ctx,
+	rows, err := db.db.QueryContext(ctx,
 		`SELECT id, user_id, room_id, check_in, check_out, total_price, status, created_at
 		 FROM bookings WHERE user_id = $1 ORDER BY created_at DESC`,
 		userID,
@@ -34,7 +34,7 @@ func (db *DB) GetBookingsByUserID(ctx context.Context, userID int64) ([]models.B
 }
 
 func (db *DB) GetBookingDetailsByUserID(ctx context.Context, userID int64) ([]models.BookingDetail, error) {
-	rows, err := db.DB.QueryContext(ctx,
+	rows, err := db.db.QueryContext(ctx,
 		`SELECT
 			b.id, b.check_in, b.check_out, b.total_price, b.status, b.created_at,
 			r.id, r.number, r.type,
@@ -72,7 +72,7 @@ func (db *DB) GetBookingDetailsByUserID(ctx context.Context, userID int64) ([]mo
 
 func (db *DB) IsRoomAvailable(ctx context.Context, roomID int64, checkIn, checkOut time.Time) (bool, error) {
 	var count int
-	err := db.DB.QueryRowContext(ctx,
+	err := db.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM bookings
 		 WHERE room_id = $1 AND status != 'cancelled'
 		 AND check_out > $2 AND check_in < $3`,
@@ -86,7 +86,7 @@ func (db *DB) IsRoomAvailable(ctx context.Context, roomID int64, checkIn, checkO
 
 func (db *DB) CreateBooking(ctx context.Context, userID, roomID int64, checkIn, checkOut time.Time, totalPrice float64) (models.Booking, error) {
 	var b models.Booking
-	err := db.DB.QueryRowContext(ctx,
+	err := db.db.QueryRowContext(ctx,
 		`INSERT INTO bookings (user_id, room_id, check_in, check_out, total_price, status)
 		 VALUES ($1, $2, $3, $4, $5, 'confirmed')
 		 RETURNING id, user_id, room_id, check_in, check_out, total_price, status, created_at`,

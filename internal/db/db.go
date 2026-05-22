@@ -83,8 +83,27 @@ const (
 	PgErrorCheckViolation      = "23514"
 )
 
+type DBTX interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
 type DB struct {
-	*sql.DB
+	db   DBTX
+	pool *sql.DB
+}
+
+func (d *DB) WithTx(ctx context.Context, fn func(*DB) error) error {
+	tx, err := d.pool.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := fn(&DB{db: tx, pool: d.pool}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 type DBConfig struct {
@@ -131,7 +150,7 @@ func Init(config *DBConfig) (*DB, error) {
 			initError = fmt.Errorf("ping to DB error: %w", err)
 			return
 		}
-		dbInstance = &DB{DB: rawDB}
+		dbInstance = &DB{db: rawDB, pool: rawDB}
 	})
 
 	if initError != nil {

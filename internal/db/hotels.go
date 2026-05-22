@@ -47,7 +47,7 @@ func (db *DB) GetHotels(ctx context.Context, f models.HotelsFilter) ([]models.Ho
 
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(DISTINCT h.id) FROM hotels h WHERE %s", cond)
-	if err := db.DB.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := db.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -69,7 +69,7 @@ func (db *DB) GetHotels(ctx context.Context, f models.HotelsFilter) ([]models.Ho
 		ORDER BY h.id
 		LIMIT $%d OFFSET $%d`, cond, n, n+1)
 
-	rows, err := db.DB.QueryContext(ctx, query, args...)
+	rows, err := db.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -92,7 +92,7 @@ func (db *DB) GetHotels(ctx context.Context, f models.HotelsFilter) ([]models.Ho
 
 func (db *DB) GetHotelByID(ctx context.Context, id string) (models.Hotel, error) {
 	var hotel models.Hotel
-	err := db.DB.QueryRowContext(ctx,
+	err := db.db.QueryRowContext(ctx,
 		`SELECT id, name, city, address, description, rating, stars FROM hotels WHERE id = $1`, id,
 	).Scan(&hotel.ID, &hotel.Name, &hotel.City, &hotel.Address, &hotel.Description, &hotel.Rating, &hotel.Stars)
 	if err != nil {
