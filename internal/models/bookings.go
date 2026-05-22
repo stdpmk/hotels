@@ -2,6 +2,13 @@ package models
 
 import "time"
 
+type BookingStatus string
+
+const (
+	BookingStatusConfirmed BookingStatus = "confirmed"
+	BookingStatusCancelled BookingStatus = "cancelled"
+)
+
 type Booking struct {
 	ID         int64     `json:"id"`
 	UserID     int64     `json:"user_id"`
@@ -9,7 +16,7 @@ type Booking struct {
 	CheckIn    time.Time `json:"check_in"`
 	CheckOut   time.Time `json:"check_out"`
 	TotalPrice float64   `json:"total_price"`
-	Status     string    `json:"status"`
+	Status     BookingStatus `json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -31,7 +38,7 @@ type BookingDetail struct {
 	CheckIn    time.Time `json:"check_in"`
 	CheckOut   time.Time `json:"check_out"`
 	TotalPrice float64   `json:"total_price"`
-	Status     string    `json:"status"`
+	Status     BookingStatus `json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 	Room       RoomInfo  `json:"room"`
 }

@@ -32,12 +32,12 @@ func (db *DB) GetHotels(ctx context.Context, f models.HotelsFilter) ([]models.Ho
 			SELECT 1 FROM rooms r WHERE r.hotel_id = h.id
 			AND NOT EXISTS (
 				SELECT 1 FROM bookings b WHERE b.room_id = r.id
-				AND b.status != 'cancelled'
+				AND b.status != $%d
 				AND b.check_out > $%d AND b.check_in < $%d
 			)
-		)`, n, n+1))
-		args = append(args, *f.CheckIn, *f.CheckOut)
-		n += 2
+		)`, n, n+1, n+2))
+		args = append(args, models.BookingStatusCancelled, *f.CheckIn, *f.CheckOut)
+		n += 3
 	}
 
 	cond := "1=1"
